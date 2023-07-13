@@ -5,8 +5,10 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import android.util.Log
 import android.view.View
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import retrofit2.Retrofit
@@ -16,22 +18,26 @@ const val BASE_URL = "https://cat-fact.herokuapp.com"
 
 class MainActivity : AppCompatActivity() {
 
+    private var scope: Job? = null
+
+    private val adapter = CustomAdapter(object : OnItemClickListener {
+        override fun onItemClick(cat: Cat) {
+            Log.d("VLADOS", "сработало")
+            val myDialogFragment = MyDialogFragment.newInstance(cat)
+            myDialogFragment.show(supportFragmentManager, "myDialog")
+        }
+    })
+
+    private val recyclerview
+        get() = findViewById<RecyclerView>(R.id.recyclerview)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         Log.d("VLADOS", "Программа запущена")
         super.onCreate(savedInstanceState)
 
         setContentView(R.layout.activity_main)
 
-        // getting the recyclerview by its id
-        val recyclerview = findViewById<RecyclerView>(R.id.recyclerview)
-
-        // this creates a vertical layout Manager
-        recyclerview.layoutManager = LinearLayoutManager(this)
-
-        // ArrayList of class ItemsViewModel
-        val data = ArrayList<ItemsViewModel>()
-
-
+        initRecyclerView()
 
         val api = Retrofit.Builder()
             .baseUrl(BASE_URL)
@@ -39,53 +45,44 @@ class MainActivity : AppCompatActivity() {
             .build()
             .create(ApiRequests::class.java)
 
-        val array =  ArrayList<String>()
-        for(i in 1..40) {
-            GlobalScope.launch(Dispatchers.IO) {
-                try {
-                    val response = api.getCatFacts().execute()
-                    if (response.isSuccessful) {
-
-                        val data = response.body()!!
-                        array.add(data.text)
-                        Log.d("VLADOS", array[i])
-
-
+        scope = CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val response = api.getCatFacts().execute()
+                if (response.isSuccessful) {
+                    val arrayList = ArrayList<Cat>()
+                    response.body()?.let { cat ->
+                        repeat(3) {
+                            arrayList.add(
+                                Cat(
+                                    image = R.drawable.ic_baseline_folder_24,
+                                    text = cat.text
+                                )
+                            )
+                        }
                     }
-                } catch (e: Exception) {
                     withContext(Dispatchers.Main) {
-                        Log.d("VLADOS", "не работает")
+                        adapter.addItems(arrayList)
                     }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Log.d("VLADOS", "не работает")
                 }
             }
         }
 
-        for (word in array) {
-            Log.d("QWERTY", word)
-            data.add(ItemsViewModel(R.drawable.ic_baseline_folder_24, "item"))
-        }
+    }
 
-        // This will pass the ArrayList to our Adapter
-        val adapter = CustomAdapter(data)
-
+    private fun initRecyclerView() {
         // Setting the Adapter with the recyclerview
         recyclerview.adapter = adapter
+        // this creates a vertical layout Manager
+        recyclerview.layoutManager = LinearLayoutManager(this)
+    }
 
-        recyclerview.addOnItemTouchListener(RecyclerItemClickListenr(this, recyclerview, object : RecyclerItemClickListenr.OnItemClickListener {
-
-            override fun onItemClick(view: View, position: Int) {
-                Log.d("VLADOS", position.toString())
-                Log.d("VLADOS", "сработало")
-                val myDialogFragment = MyDialogFragment()
-                val manager = supportFragmentManager
-                myDialogFragment.show(manager, "myDialog")
-            }
-            override fun onItemLongClick(view: View?, position: Int) {
-                TODO("do nothing")
-            }
-
-        }))
-
+    override fun onDestroy() {
+        super.onDestroy()
+        scope?.cancel()
     }
 
 }

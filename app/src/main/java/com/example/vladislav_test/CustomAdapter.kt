@@ -13,7 +13,16 @@ import android.widget.TextView
 import androidx.fragment.app.DialogFragment
 import androidx.recyclerview.widget.RecyclerView
 
-class CustomAdapter(private val mList: List<ItemsViewModel>) : RecyclerView.Adapter<CustomAdapter.ViewHolder>() {
+class CustomAdapter(private val onItemClickListener: OnItemClickListener) :
+    RecyclerView.Adapter<CustomAdapter.ViewHolder>() {
+
+    private val mList = mutableListOf<Cat>()
+
+    fun addItems(list: List<Cat>) {
+        mList.clear()
+        mList.addAll(list)
+        notifyDataSetChanged()
+    }
     // create new views
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         // inflates the card_view_design view
@@ -26,15 +35,8 @@ class CustomAdapter(private val mList: List<ItemsViewModel>) : RecyclerView.Adap
 
     // binds the list items to a view
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-
-        val ItemsViewModel = mList[position]
-
-        // sets the image to the imageview from our itemHolder class
-        holder.imageView.setImageResource(ItemsViewModel.image)
-
-        // sets the text to the textview from our itemHolder class
-        holder.textView.text = ItemsViewModel.text
-
+        val itemsViewModel = mList[position]
+        holder.bind(itemsViewModel)
     }
 
     // return the number of the items in the list
@@ -45,68 +47,23 @@ class CustomAdapter(private val mList: List<ItemsViewModel>) : RecyclerView.Adap
 
 
     // Holds the views for adding it to image and text
-    class ViewHolder(ItemView: View) : RecyclerView.ViewHolder(ItemView) {
-        val imageView: ImageView = itemView.findViewById(R.id.imageview)
-        val textView: TextView = itemView.findViewById(R.id.textView)
+    inner class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        private val imageView: ImageView = itemView.findViewById(R.id.imageview)
+        private val textView: TextView = itemView.findViewById(R.id.textView)
+
+        fun bind(cat: Cat) {
+            // sets the image to the imageview from our itemHolder class
+            imageView.setImageResource(cat.image)
+
+            // sets the text to the textview from our itemHolder class
+            textView.text = cat.text
+            itemView.setOnClickListener {
+                onItemClickListener.onItemClick(cat)
+            }
+        }
     }
 }
 
-class RecyclerItemClickListenr(context: Context, recyclerView: RecyclerView, private val mListener: OnItemClickListener?) : RecyclerView.OnItemTouchListener {
-
-    private val mGestureDetector: GestureDetector
-
-    interface OnItemClickListener {
-        fun onItemClick(view: View, position: Int)
-
-        fun onItemLongClick(view: View?, position: Int)
-    }
-
-    init {
-
-        mGestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
-            override fun onSingleTapUp(e: MotionEvent): Boolean {
-                return true
-            }
-
-            override fun onLongPress(e: MotionEvent) {
-                val childView = recyclerView.findChildViewUnder(e.x, e.y)
-
-                if (childView != null && mListener != null) {
-                    mListener.onItemLongClick(childView, recyclerView.getChildAdapterPosition(childView))
-                }
-            }
-        })
-    }
-
-    override fun onInterceptTouchEvent(view: RecyclerView, e: MotionEvent): Boolean {
-        val childView = view.findChildViewUnder(e.x, e.y)
-
-        if (childView != null && mListener != null && mGestureDetector.onTouchEvent(e)) {
-            mListener.onItemClick(childView, view.getChildAdapterPosition(childView))
-        }
-
-        return false
-    }
-
-    override fun onTouchEvent(view: RecyclerView, motionEvent: MotionEvent) {}
-
-    override fun onRequestDisallowInterceptTouchEvent(disallowIntercept: Boolean) {}}
-
-class MyDialogFragment : DialogFragment() {
-    override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-        return activity?.let {
-            val builder = AlertDialog.Builder(it)
-            builder.setMessage("фывдарзфывлар лфыврадшр " +
-                    "фывлдардлфырвлдоардлфыврдлардлфыврдларыфлдврадлыфвардлывфалфывдарлдфыоврафыва" +
-                    "фывафывалфыорвалфывафывращгзрывшзгвфашгвфаызшызвфкаизфзффззыгаврфырфавырафвыр" +
-                    "фывафывалфыорвалфывафывращгзрывшзгвфашгвфаызшызвфкаизфзффззыгаврфырфавырафвыр" +
-                    "фывафывалфыорвалфывафывращгзрывшзгвфашгвфаызшызвфкаизфзффззыгаврфырфавырафвыр" +
-                    "фывафывалфыорвалфывафывращгзрывшзгвфашгвфаызшызвфкаизфзффззыгаврфырфавырафвыр" +
-                    "фывафывалфыорвалфывафывращгзрывшзгвфашгвфаызшызвфкаизфзффззыгаврфырфавырафвыр" +
-                    "фывафывалфыорвалфывафывращгзрывшзгвфашгвфаызшызвфкаизфзффззыгаврфырфавырафвыр").setPositiveButton("Закрыть") {
-                        dialog, id ->  dialog.cancel()
-                }
-            builder.create()
-        } ?: throw IllegalStateException("Activity cannot be null")
-    }
+interface OnItemClickListener {
+    fun onItemClick(cat: Cat)
 }
